@@ -1,96 +1,156 @@
 import numpy as np
 import pandas as pd
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
 
-class ID3Classifier:
-    def __init__(self):
+# Fungsi untuk menghitung entropy
+def entropy(y):
+    classes, counts = np.unique(y, return_counts=True)
+    probabilities = counts / len(y)
+    return -np.sum(probabilities * np.log2(probabilities))
+
+# Fungsi untuk menghitung information gain
+def information_gain(data, feature, target):
+    total_entropy = entropy(target)
+    
+    # Nilai threshold terbaik berdasarkan informasi maksimum
+    best_threshold = None
+    best_gain = -1
+
+    unique_values = np.unique(data[feature])
+    for threshold in unique_values:
+        left_split = target[data[feature] <= threshold]
+        right_split = target[data[feature] > threshold]
+        
+        # Hitung entropy weighted split
+        weight_left = len(left_split) / len(target)
+        weight_right = len(right_split) / len(target)
+        
+        split_entropy = (weight_left * entropy(left_split)) + (weight_right * entropy(right_split))
+        
+        # Gain = Entropy awal - Entropy split
+        gain = total_entropy - split_entropy
+
+        if gain > best_gain:
+            best_gain = gain
+            best_threshold = threshold
+
+    return best_gain, best_threshold
+
+# Fungsi untuk membangun pohon decision tree
+class ID3Numeric:
+    def __init__(self, max_depth=None):
         self.tree = None
+        self.max_depth = max_depth
 
-    def _entropy(self, y):
-        """Menghitung entropy dari array label."""
-        values, counts = np.unique(y, return_counts=True)
-        probabilities = counts / len(y)
-        return -np.sum(probabilities * np.log2(probabilities))
+    def fit(self, X, y, depth=0):
+        if len(np.unique(y)) == 1 or (self.max_depth is not None and depth >= self.max_depth):
+            return np.unique(y)[0]  # Return leaf node dengan kelas dominan
 
-    def _information_gain(self, X, y, feature):
-        """Menghitung information gain dari fitur tertentu."""
-        total_entropy = self._entropy(y)
-        values, counts = np.unique(X[:, feature], return_counts=True)
-        weighted_entropy = np.sum(
-            (counts[i] / len(y)) * self._entropy(y[X[:, feature] == values[i]])
-            for i in range(len(values))
-        )
-        return total_entropy - weighted_entropy
+        best_feature = None
+        best_threshold = None
+        best_gain = -1
 
-    def _best_feature(self, X, y):
-        """Menentukan fitur terbaik untuk split berdasarkan information gain."""
-        return np.argmax([self._information_gain(X, y, i) for i in range(X.shape[1])])
+        for feature in X.columns:
+            gain, threshold = information_gain(X, feature, y)
+            if gain > best_gain:
+                best_gain = gain
+                best_feature = feature
+                best_threshold = threshold
 
-    def _build_tree(self, X, y):
-        """Rekursif membangun pohon keputusan."""
-        # Jika semua label sama, kembalikan distribusi label
-        if len(np.unique(y)) == 1:
-            return {"label": y[0], "proba": {y[0]: 1.0}}
+        if best_gain == 0:
+            return np.unique(y)[0]
 
-        # Jika tidak ada fitur untuk split, kembalikan distribusi label
-        if X.shape[1] == 0:
-            counts = np.bincount(y)
-            probs = counts / len(y)
-            return {"label": counts.argmax(), "proba": dict(enumerate(probs))}
+        tree = {
+            'feature': best_feature,
+            'threshold': best_threshold,
+            'left': None,
+            'right': None
+        }
 
-        # Tentukan fitur terbaik untuk split
-        best_feat = self._best_feature(X, y)
-        tree = {best_feat: {}}
+        left_indices = X[best_feature] <= best_threshold
+        right_indices = X[best_feature] > best_threshold
 
-        # Split data berdasarkan nilai fitur terbaik
-        for value in np.unique(X[:, best_feat]):
-            sub_X = X[X[:, best_feat] == value]
-            sub_y = y[X[:, best_feat] == value]
-            subtree = self._build_tree(np.delete(sub_X, best_feat, axis=1), sub_y)
-            tree[best_feat][value] = subtree
+        tree['left'] = self.fit(X[left_indices], y[left_indices], depth + 1)
+        tree['right'] = self.fit(X[right_indices], y[right_indices], depth + 1)
 
         return tree
 
-    def fit(self, X, y):
-        """Melatih model ID3 berdasarkan fitur dan label."""
-        self.tree = self._build_tree(np.array(X), np.array(y))
+    def predict_instance(self, instance, tree):
+        if not isinstance(tree, dict):
+            return tree
 
-    def _predict_one(self, sample, tree):
-        """Memprediksi label untuk satu sample."""
-        if not isinstance(tree, dict) or "proba" in tree:
-            return tree["label"]
+        feature = tree['feature']
+        threshold = tree['threshold']
 
-        feature = next(iter(tree))
-        value = sample[feature]
-        subtree = tree[feature].get(value, None)
-        if subtree is None:
-            return None  # Jika tidak ada nilai yang sesuai
-
-        return self._predict_one(sample, subtree)
+        if instance[feature] <= threshold:
+            return self.predict_instance(instance, tree['left'])
+        else:
+            return self.predict_instance(instance, tree['right'])
 
     def predict(self, X):
-        """Memprediksi label untuk data baru."""
-        return np.array([self._predict_one(sample, self.tree) for sample in np.array(X)])
+        return [self.predict_instance(row, self.tree) for _, row in X.iterrows()]
 
-    def _predict_proba_one(self, sample, tree):
-        """Menghitung probabilitas untuk satu sample."""
-        if not isinstance(tree, dict) or "proba" in tree:
-            return tree["proba"]
 
-        feature = next(iter(tree))
-        value = sample[feature]
-        subtree = tree[feature].get(value, None)
-        if subtree is None:
-            return None  # Jika tidak ada nilai yang sesuai
+if __name__ == "__main__":
+    # Dataset manual
+    data = {
+        'Feature1': [2, 3, 1, 5, 7, 9, 6, 8, 3, 2],
+        'Feature2': [1, 3, 2, 4, 5, 7, 6, 9, 3, 1],
+        'Feature3': [5, 7, 8, 2, 3, 4, 6, 7, 5, 8],
+        'Target': [0, 1, 0, 1, 1, 0, 1, 1, 0, 0]
+    }
 
-        return self._predict_proba_one(sample, subtree)
+    df_additional_features_train = pd.read_csv('data/train/additional_features_train.csv')
+    df_labels_train = pd.read_csv('data/train/labels_train.csv')
+    df_basic_features_train = pd.read_csv('data/train/basic_features_train.csv')
+    df_content_features_train = pd.read_csv('data/train/content_features_train.csv')
+    df_flow_features_train = pd.read_csv('data/train/flow_features_train.csv')
+    df_time_features_train = pd.read_csv('data/train/time_features_train.csv')
 
-    def predict_proba(self, X):
-        """Menghitung probabilitas untuk data baru."""
-        probas = []
-        for sample in np.array(X):
-            proba = self._predict_proba_one(sample, self.tree)
-            if proba is None:
-                proba = {k: 0 for k in range(len(np.unique(y)))}  # Default proba jika tidak ditemukan
-            probas.append(proba)
-            
-        return [list(proba.values()) for proba in probas]
+
+    df_train = pd.merge(df_additional_features_train, df_basic_features_train, on='id')
+    df_train = pd.merge(df_train, df_basic_features_train, on='id')
+    df_train = pd.merge(df_train, df_labels_train, on='id')
+    df_train = pd.merge(df_train, df_content_features_train, on='id')
+    df_train = pd.merge(df_train, df_flow_features_train, on='id')
+    df_train = pd.merge(df_train, df_time_features_train, on='id')
+
+
+
+    df= df_train.head(10000)
+    df = df.dropna()
+    # Split dataset menjadi train dan validate
+
+    # Fitur dan Target
+    print(df.columns)
+
+    # filter x where X is non object
+    X = df.select_dtypes(exclude=['object'])
+    X = df.drop(columns=['id'])
+    # X = X.dropna()
+    y = df['attack_cat']
+
+
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2,random_state=2)
+
+    print("Fitur X:\n", X.head())
+    print("Target y:\n", y.head())
+
+
+    # # Inisialisasi dan training ID3w
+    id3 = ID3Numeric(max_depth=3)
+    id3.tree = id3.fit(X_train, y_train)
+
+    # # Cetak tree hasil training
+    # print("Decision Tree:")
+    # print(id3.tree)
+
+    # # Prediksi
+    predictions = id3.predict(X_test)
+
+    # Print accuracy
+    accuracy = accuracy_score(y_test, predictions)
+    print(f"Accuracy: {accuracy}")
+
+    # print("Predictions:", predictions)
