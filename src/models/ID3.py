@@ -41,13 +41,14 @@ def information_gain(data, feature, target):
     return best_gain, best_threshold
 
 
-class ID3Numeric:
+class ID3Algorithm:
     def __init__(self, max_depth=None):
         self.tree = None
         self.max_depth = max_depth
+        self.message = "ID3 Numeric Classifier"
 
     # Membangun decision tree secara rekursif
-    def fit(self, X, y, depth=0):
+    def fitter(self, X, y, depth=0):
         # Jika semua data memiliki kelas yang sama/kedalaman maksimum tercapai, bikin node daun
         if len(np.unique(y)) == 1 or (self.max_depth is not None and depth >= self.max_depth):
             return np.unique(y)[0]  # Node daun dengan kelas dominan
@@ -81,11 +82,14 @@ class ID3Numeric:
         left_indices = X[best_feature] <= best_threshold
         right_indices = X[best_feature] > best_threshold
 
-        tree['left'] = self.fit(X[left_indices], y[left_indices], depth + 1)
-        tree['right'] = self.fit(X[right_indices], y[right_indices], depth + 1)
+        tree['left'] = self.fitter(X[left_indices], y[left_indices], depth + 1)
+        tree['right'] = self.fitter(X[right_indices], y[right_indices], depth + 1)
 
-        self.tree = tree
+        # self.tree = tree
         return tree
+    
+    def fit(self, X, y):
+        self.tree = self.fitter(X, y)
 
     # Prediksi kelas untuk satu instance menggunakan decision tree
     def predict_instance(self, instance, tree):
