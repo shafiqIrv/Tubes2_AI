@@ -49,6 +49,7 @@ class ID3Algorithm:
 
     # Membangun decision tree secara rekursif
     def fitter(self, X, y, depth=0):
+        print(depth)
         # Jika semua data memiliki kelas yang sama/kedalaman maksimum tercapai, bikin node daun
         if len(np.unique(y)) == 1 or (self.max_depth is not None and depth >= self.max_depth):
             return np.unique(y)[0]  # Node daun dengan kelas dominan
