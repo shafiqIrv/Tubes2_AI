@@ -15,19 +15,36 @@ class KNN_FromScratch:
     def fit(self, X_train, Y_train):
         # asumsi scaling dan encoding sudah di notebook
         # fungsi ini cuma simpan training data
-        self.X_train = X_train
-        self.Y_train = Y_train
+        self.X_train = X_train.to_numpy()
+        self.Y_train = Y_train.to_numpy()
         return
     
     def predict_instance(self, instance):
-        distances = [distance(i, instance, self.p) for i in self.X_train]
+        distances = [distance(i, instance.to_numpy(), self.p) for i in self.X_train]
         nearest_neighbors_index = np.argsort(distances)[:self.n_neighbors] # argsort yg direturn indexnya
-        nearest_neighbors  = [self.Y_train[i] for i in nearest_neighbors_index]
+        nearest_neighbors  = self.Y_train[nearest_neighbors_index]
+        nearest_neighbors = [label.item() if isinstance(label, np.ndarray) else label for label in nearest_neighbors]
         return Counter(nearest_neighbors).most_common(1)[0][0] # cari yg paling banyak
     
     def predict(self, X_test):
         # X_test itu semua data test
-        return [self.predict_instance(instance) for instance in X_test]
+        return [self.predict_instance(instance) for _, instance in X_test.iterrows()]
+
+    # Simpan model
+    def save_model(self, file_name):
+        """Save the model to a file."""
+        with open(file_name, 'wb') as file:
+            pickle.dump(self, file)
+        print(f"Model saved to {file_name}")
+
+    # Load model
+    @staticmethod
+    def load_model(file_name):
+        """Load the model from a file."""
+        with open(file_name, 'rb') as file:
+            model = pickle.load(file)
+        print(f"Model loaded from {file_name}")
+        return model
 
 # test
 """if __name__ == "__main__":
