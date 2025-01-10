@@ -1,5 +1,6 @@
 import numpy as np
 from collections import Counter
+import pickle
 
 def distance(A, B, p):
     # A dan B array point, p parameter (lihat __init__)
@@ -47,30 +48,30 @@ class KNN_FromScratch:
         return model
 
 # test
-"""if __name__ == "__main__":
-    X = np.array([
-        [0, 1, 0, 1, 0],
-        [1, 0, 1, 0, 1],
-        [1, 1, 0, 1, 0],
-        [0, 0, 1, 0, 1],
-        [1, 0, 0, 1, 0],
-        [0, 1, 1, 0, 1],
-        [1, 1, 1, 1, 0],
-        [0, 0, 0, 0, 1],
-        [1, 0, 1, 1, 0],
-        [0, 1, 0, 0, 1]
-    ])
-    y = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+# if __name__ == "__main__":
+#     X = np.array([
+#         [0, 1, 0, 1, 0],
+#         [1, 0, 1, 0, 1],
+#         [1, 1, 0, 1, 0],
+#         [0, 0, 1, 0, 1],
+#         [1, 0, 0, 1, 0],
+#         [0, 1, 1, 0, 1],
+#         [1, 1, 1, 1, 0],
+#         [0, 0, 0, 0, 1],
+#         [1, 0, 1, 1, 0],
+#         [0, 1, 0, 0, 1]
+#     ])
+#     y = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
 
-    # Split dataset menjadi train dan test
-    train_size = int(0.8 * len(X))
-    X_train, X_test = X[:train_size], X[train_size:]
-    y_train, y_test = y[:train_size], y[train_size:]
+#     # Split dataset menjadi train dan test
+#     train_size = int(0.8 * len(X))
+#     X_train, X_test = X[:train_size], X[train_size:]
+#     y_train, y_test = y[:train_size], y[train_size:]
 
-    # Latih model
-    model = KNN_FromScratch(2, 1)
-    model.fit(X_train, y_train)
+#     # Latih model
+#     model = KNN_FromScratch(2, 1)
+#     model.fit(X_train, y_train)
 
-    # Prediksi
-    y_pred = model.predict(X_test)
-    print(y_pred)"""
+#     # Prediksi
+#     y_pred = model.predict(X_test)
+#     print(y_pred)
